@@ -114,26 +114,6 @@ cd waste-management-backend
 ```bash
 # Install dependencies
 npm install
-
-# Or using yarn
-yarn install
-```
-
-### Option 2: Python Setup
-```bash
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On Linux/Mac:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
 ---
 
 ## 🗄️ Database Setup
@@ -205,9 +185,8 @@ DB_NAME=waste_management
 
 # Server Configuration
 PORT=3000                    # For Express
-# PORT=5000                  # For Flask
 NODE_ENV=development         # For Express
-# FLASK_ENV=development      # For Flask
+
 
 # JWT Secret (Generate strong secret for production)
 JWT_SECRET=your_secret_key_here
@@ -225,11 +204,6 @@ CORS_ORIGIN=http://localhost:5173
 # Node.js
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
-# Python
-python -c "import secrets; print(secrets.token_hex(64))"
-```
-
----
 
 ## 🏃 Running the Server
 
