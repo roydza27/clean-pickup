@@ -41,19 +41,12 @@ This backend provides a complete REST API for a waste management platform connec
 
 ## 🛠️ Technology Stack
 
-### Option 1: Node.js (Express)
+### Node.js (Express)
 - **Runtime:** Node.js v16+
 - **Framework:** Express.js
 - **Database:** MySQL 8.0+ / PostgreSQL
 - **Authentication:** OTP-based (JWT ready)
 - **Package Manager:** npm
-
-### Option 2: Python (Flask)
-- **Runtime:** Python 3.8+
-- **Framework:** Flask
-- **Database:** MySQL 8.0+ / PostgreSQL
-- **Authentication:** OTP-based (JWT ready)
-- **Package Manager:** pip
 
 ---
 
@@ -105,12 +98,7 @@ npm --version   # v8 or higher
 mysql --version # MySQL 8.0 or higher
 ```
 
-### For Python (Flask)
-```bash
-python --version    # Python 3.8 or higher
-pip --version       # pip 20 or higher
-mysql --version     # MySQL 8.0 or higher
-```
+
 
 ---
 
