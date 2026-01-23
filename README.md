@@ -218,14 +218,6 @@ npm run dev
 node server.js
 ```
 
-#### Python (Flask)
-```bash
-# Make sure virtual environment is activated
-python app.py
-
-# Or using Flask CLI
-flask run
-```
 
 ### Production Mode
 
@@ -234,16 +226,10 @@ flask run
 NODE_ENV=production npm start
 ```
 
-#### Python (Flask)
-```bash
-FLASK_ENV=production gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
 ### Verify Server is Running
 
 Visit:
 - Express: http://localhost:3000/health
-- Flask: http://localhost:5000/health
 
 Expected response:
 ```json
@@ -302,7 +288,6 @@ curl -X POST http://localhost:3000/api/pickups/request \
 ```
 waste-management-backend/
 ├── server.js                 # Express server (Node.js)
-├── app.py                    # Flask app (Python)
 ├── database_schema.sql       # Complete database schema
 ├── package.json              # Node.js dependencies
 ├── requirements.txt          # Python dependencies
