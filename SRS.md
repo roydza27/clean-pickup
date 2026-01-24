@@ -1,396 +1,402 @@
-📘 Software Requirements Specification (SRS)
-Project Title
+# 📘 Software Requirements Specification (SRS)
 
-Waste Coordination & Recycling Management System
-(Decision-Support Platform for Informal Recycling Ecosystems – India Pilot)
+## Project Title  
+**Waste Coordination & Recycling Management System**  
+*(Decision-Support Platform for Informal Recycling Ecosystems – India Pilot)*
 
-1. Introduction
-1.1 Purpose
+---
 
-This document specifies the functional and non-functional requirements for the Waste Coordination & Recycling Management System, a web-based, location-aware decision-support platform designed to improve coordination between citizens and scrap collectors (Kabadiwalas) in urban Indian localities.
+## 1. Introduction
 
-The system focuses on data-driven operational decision support, with one adaptive learning component that improves pickup assignment quality over time based on observed outcomes.
+### 1.1 Purpose
+
+This document specifies the functional and non-functional requirements for the **Waste Coordination & Recycling Management System**, a web-based, location-aware **decision-support platform** designed to improve coordination between citizens and scrap collectors (Kabadiwalas) in urban Indian localities.
+
+The system focuses on **data-driven operational decision support**, with **one adaptive learning component** that improves pickup assignment quality over time based on observed outcomes.
 
 This SRS is intended for:
 
-Academic evaluators
+- Academic evaluators  
+- Project mentors  
+- Software developers  
+- Startup incubators and reviewers  
 
-Project mentors
+---
 
-Software developers
+### 1.2 Scope
 
-Startup incubators and reviewers
-
-1.2 Scope
-
-The system is a software-only Minimum Viable Product (MVP) delivered as a responsive web application accessible via desktop and mobile browsers.
+The system is a **software-only Minimum Viable Product (MVP)** delivered as a **responsive web application** accessible via desktop and mobile browsers.
 
 The platform supports:
 
-Citizens generating recyclable waste
+- Citizens generating recyclable waste  
+- Kabadiwalas performing pickups  
+- Admin operators managing operations and policies  
 
-Kabadiwalas performing pickups
+⚠️ **Hardware components** (smart bins, GPS trackers, automated weighing devices) are **explicitly excluded** from this phase and documented only as future scope.
 
-Admin operators managing operations and policies
+---
 
-⚠️ Hardware components (smart bins, GPS trackers, automated weighing devices) are explicitly excluded from this phase and documented only as future scope.
+### 1.3 Objectives
 
-1.3 Objectives
+- Improve coordination efficiency in informal recycling workflows  
+- Increase pickup completion reliability  
+- Improve income predictability for Kabadiwalas  
+- Provide transparency in pricing and pickup status  
+- Reduce recyclable waste sent to landfills  
+- Demonstrate measurable operational improvement over time  
+- Validate a learning-based decision mechanism under real-world constraints  
 
-Improve coordination efficiency in informal recycling workflows
+---
 
-Increase pickup completion reliability
+### 1.4 Definitions & Acronyms
 
-Improve income predictability for Kabadiwalas
+| Term | Meaning |
+|----|----|
+| MVP | Minimum Viable Product |
+| OTP | One-Time Password |
+| ETA | Estimated Time of Arrival |
+| RWA | Resident Welfare Association |
+| UPI | Unified Payments Interface |
+| Policy Engine | Rule-based decision logic |
+| Learning Loop | Feedback-driven weight adjustment mechanism |
 
-Provide transparency in pricing and pickup status
+---
 
-Reduce recyclable waste sent to landfills
+## 2. Overall Description
 
-Demonstrate measurable operational improvement over time
+### 2.1 Product Perspective
 
-Validate a learning-based decision mechanism under real-world constraints
-
-1.4 Definitions & Acronyms
-Term	Meaning
-MVP	Minimum Viable Product
-OTP	One-Time Password
-ETA	Estimated Time of Arrival
-RWA	Resident Welfare Association
-UPI	Unified Payments Interface
-Policy Engine	Rule-based decision logic
-Learning Loop	Feedback-driven weight adjustment mechanism
-2. Overall Description
-2.1 Product Perspective
-
-The system is a location-aware, map-centric coordination platform inspired by modern consumer service applications (e.g., ride-hailing and delivery apps).
+The system is a **location-aware, map-centric coordination platform** inspired by modern consumer service applications (e.g., ride-hailing and delivery apps).
 
 It consists of:
 
-Citizen Web Interface
-
-Kabadiwala Web Interface
-
-Admin Web Dashboard
+- Citizen Web Interface  
+- Kabadiwala Web Interface  
+- Admin Web Dashboard  
 
 All interfaces communicate with a centralized backend implementing:
 
-Role-based access control
+- Role-based access control  
+- Policy-based decision engines  
+- One adaptive learning module for pickup assignment  
 
-Policy-based decision engines
+---
 
-One adaptive learning module for pickup assignment
+### 2.2 User Classes
 
-2.2 User Classes
-User	Description
-Citizen	Household user scheduling recyclable pickups
-Kabadiwala	Scrap collector completing assigned pickups
-Admin	Operator configuring policies and monitoring system performance
-2.3 Operating Environment
+| User | Description |
+|----|----|
+| Citizen | Household user scheduling recyclable pickups |
+| Kabadiwala | Scrap collector completing assigned pickups |
+| Admin | Operator configuring policies and monitoring system performance |
 
-Modern web browsers (Chrome, Firefox, Edge)
+---
 
-Android mobile browsers (primary)
+### 2.3 Operating Environment
 
-Intermittent internet connectivity
+- Modern web browsers (Chrome, Firefox, Edge)  
+- Android mobile browsers (primary)  
+- Intermittent internet connectivity  
+- Cloud-hosted backend infrastructure  
 
-Cloud-hosted backend infrastructure
+---
 
-2.4 Design Constraints
+### 2.4 Design Constraints
 
-Web-only implementation (no native mobile apps)
+- Web-only implementation (no native mobile apps)  
+- Mobile-first UX  
+- Manual data entry allowed  
+- India-specific locality, pricing, and payment context  
+- Supported waste categories:
+  - Plastic  
+  - Paper  
+  - Metal  
 
-Mobile-first UX
+---
 
-Manual data entry allowed
+### 2.5 Assumptions
 
-India-specific locality, pricing, and payment context
+- Users possess web-enabled smartphones  
+- Scrap rates are updated daily  
+- Payments are executed externally via UPI  
+- Pickup data is initially limited and noisy  
+- Full automation is intentionally avoided to ensure fairness and safety  
 
-Supported waste categories:
+---
 
-Plastic
+## 3. System Philosophy & Design Principles
 
-Paper
+### 3.1 Human-Centered Automation
 
-Metal
+The system prioritizes **decision support over full automation** due to:
 
-2.5 Assumptions
+- Informal labor dynamics  
+- Data sparsity  
+- Ethical and operational considerations  
 
-Users possess web-enabled smartphones
+---
 
-Scrap rates are updated daily
+### 3.2 Incremental Intelligence
 
-Payments are executed externally via UPI
+Only **one system component learns over time**, while others remain deterministic to ensure stability and explainability.
 
-Pickup data is initially limited and noisy
+---
 
-Full automation is intentionally avoided to ensure fairness and safety
+## 4. Functional Requirements
 
-3. System Philosophy & Design Principles
-3.1 Human-Centered Automation
+---
 
-The system prioritizes decision support over full automation due to:
+## 4.1 Citizen Web Interface
 
-Informal labor dynamics
+### 4.1.1 Authentication
 
-Data sparsity
+- Phone number + OTP login  
+- Persistent account profile  
+- Stored pickup and payment history  
 
-Ethical and operational considerations
+---
 
-3.2 Incremental Intelligence
+### 4.1.2 Location Selection
 
-Only one system component learns over time, while others remain deterministic to ensure stability and explainability.
+- Pincode / locality selection  
+- Service availability indication  
 
-4. Functional Requirements
-4.1 Citizen Web Interface
-4.1.1 Authentication
+---
 
-Phone number + OTP login
+### 4.1.3 Scrap Pickup Request
 
-Persistent account profile
+- Select waste categories  
+- View daily scrap rates  
+- Choose pickup date  
+- Submit pickup request  
 
-Stored pickup and payment history
+---
 
-4.1.2 Location Selection
+### 4.1.4 Pickup Tracking
 
-Pincode / locality selection
+Pickup status lifecycle:
 
-Service availability indication
+- Requested  
+- Assigned  
+- On the way  
+- Completed  
 
-4.1.3 Scrap Pickup Request
+Includes **map-based tracking view**.
 
-Select waste categories
+---
 
-View daily scrap rates
+### 4.1.5 Payment Tracking
 
-Choose pickup date
+- Pickup-wise payment status  
+- Optional UPI reference entry  
+- Payment history timeline  
 
-Submit pickup request
+---
 
-4.1.4 Pickup Tracking
+### 4.1.6 Garbage Collection Timing
 
-Status lifecycle:
+- Expected arrival window display  
+- Updates based on historical performance  
+- Missed pickup reporting  
 
-Requested
+---
 
-Assigned
+## 4.2 Kabadiwala Web Interface
 
-On the way
+### 4.2.1 Authentication
 
-Completed
+- Phone number + OTP login  
+- Role-specific interface  
 
-Map-based tracking view
+---
 
-4.1.5 Payment Tracking
+### 4.2.2 Assigned Pickups
 
-Pickup-wise payment status
+- Daily pickup list  
+- Pickup details:
+  - Address  
+  - Category  
+  - Scheduled window  
 
-Optional UPI reference entry
+---
 
-Payment history timeline
+### 4.2.3 Route Guidance
 
-4.1.6 Garbage Collection Timing
+- System-suggested pickup order  
+- External map navigation launch  
 
-Expected arrival window display
+---
 
-Updates based on historical performance
+### 4.2.4 Pickup Completion
 
-Missed pickup reporting
+- Mark pickup as completed  
+- Completion timestamp recorded  
+- Optional manual weight entry  
 
-4.2 Kabadiwala Web Interface
-4.2.1 Authentication
+---
 
-Phone number + OTP login
+### 4.2.5 Earnings Summary
 
-Role-specific interface
+- Daily earnings  
+- Pickup count  
+- Historical summary  
 
-4.2.2 Assigned Pickups
+---
 
-Daily pickup list
+## 4.3 Admin Web Dashboard
 
-Pickup details:
+### 4.3.1 Access Control
 
-Address
+- Role-restricted access  
+- Desktop-optimized layout  
 
-Category
+---
 
-Scheduled window
+### 4.3.2 Policy Configuration
 
-4.2.3 Route Guidance
+- Scrap rate management  
+- Locality and service zone configuration  
+- Assignment policy parameter tuning  
 
-System-suggested pickup order
+---
 
-External map navigation launch
+### 4.3.3 Pickup Assignment Oversight
 
-4.2.4 Pickup Completion
+- View system-assigned pickups  
+- Manual override capability (exceptional cases only)  
 
-Mark pickup as completed
+---
 
-Timestamp recorded
-
-Optional manual weight entry
-
-4.2.5 Earnings Summary
-
-Daily earnings
-
-Pickup count
-
-Historical summary
-
-4.3 Admin Web Dashboard
-4.3.1 Access Control
-
-Role-restricted access
-
-Desktop-optimized layout
-
-4.3.2 Policy Configuration
-
-Scrap rate management
-
-Locality and service zone configuration
-
-Assignment policy parameter tuning
-
-4.3.3 Pickup Assignment Oversight
-
-View system-assigned pickups
-
-Manual override capability (exceptional cases)
-
-4.3.4 Impact Metrics Engine
+### 4.3.4 Impact Metrics Engine
 
 The system shall display:
 
-Pickup completion rate (before vs after learning)
+- Pickup completion rate (before vs after learning)  
+- Average delay reduction  
+- Income stability trends  
+- Route efficiency indicators  
 
-Average delay reduction
+---
 
-Income stability trends
+## 5. Core Intelligence Module (PRIMARY CONTRIBUTION)
 
-Route efficiency indicators
+### 5.1 Learning-Based Pickup Assignment Engine
 
-5. Core Intelligence Module (PRIMARY CONTRIBUTION)
-5.1 Learning-Based Pickup Assignment Engine
-Description
+#### Description
+The system implements a **learning-based feedback loop** that improves pickup assignment decisions over time by adjusting factor weights based on observed outcomes.
 
-The system implements a learning-based feedback loop that improves pickup assignment decisions over time by adjusting factor weights based on observed outcomes.
+#### Inputs
+- Kabadiwala distance  
+- Current workload  
+- Reliability score  
+- Historical completion performance  
 
-Inputs
+#### Initial State
+- Rule-based assignment with equal weights  
 
-Kabadiwala distance
+#### Learning Mechanism
+- Log assignment outcomes  
+- Periodically adjust weights to favor successful outcomes  
+- Penalize patterns associated with delays or failures  
 
-Current workload
+#### Output
+- Improved pickup assignment quality over time  
+- Measurable performance gains  
 
-Reliability score
+⚠️ This is the **only adaptive learning component** in the system.
 
-Historical completion performance
+---
 
-Initial State
+## 6. Non-Functional Requirements
 
-Rule-based assignment with equal weights
+### 6.1 Performance
 
-Learning Mechanism
+- Support ≥ 500 concurrent users  
+- Average response time ≤ 3 seconds  
 
-Log assignment outcomes
+---
 
-Periodically adjust weights to favor successful outcomes
+### 6.2 Reliability
 
-Penalize patterns associated with delays or failures
+- Prevention of duplicate assignments  
+- Graceful handling of network interruptions  
 
-Output
+---
 
-Improved pickup assignment quality over time
+### 6.3 Usability
 
-Measurable performance gains
+- Mobile-first, map-centric UX  
+- Simple, non-technical interface  
+- English and Hindi language support  
 
-⚠️ This is the only adaptive learning component in the system.
+---
 
-6. Non-Functional Requirements
-6.1 Performance
+### 6.4 Security
 
-Support ≥500 concurrent users
+- OTP-based authentication  
+- Role-based access control  
+- Secure API endpoints  
 
-Average response time ≤3 seconds
+---
 
-6.2 Reliability
+### 6.5 Scalability
 
-Prevention of duplicate assignments
+- Multi-locality and multi-city support  
+- Policy parameter extensibility  
 
-Graceful handling of network interruptions
+---
 
-6.3 Usability
+## 7. External Interface Requirements
 
-Mobile-first, map-centric UX
+### 7.1 User Interfaces
 
-Simple, non-technical interface
+- Responsive web UI for all roles  
+- Map-centric interaction design  
 
-English and Hindi support
+---
 
-6.4 Security
+### 7.2 Software Interfaces
 
-OTP-based authentication
+- Map APIs (navigation only)  
+- Browser notification services  
+- Relational database system  
 
-Role-based access control
+---
 
-Secure API endpoints
+## 8. Out-of-Scope (Explicitly Excluded)
 
-6.5 Scalability
+- Blockchain systems  
+- Carbon credit integration  
+- Smart bins and sensors  
+- Fully autonomous decision systems  
+- Native mobile applications  
 
-Multi-locality and multi-city support
+---
 
-Policy parameter extensibility
+## 9. Future Scope (Conceptual)
 
-7. External Interface Requirements
-7.1 User Interfaces
+- Additional learning signals  
+- Municipality-level analytics  
+- Hardware integrations (future phases only)  
 
-Responsive web UI for all roles
+---
 
-Map-centric interaction design
-
-7.2 Software Interfaces
-
-Map APIs (navigation only)
-
-Browser notification services
-
-Relational database system
-
-8. Out-of-Scope (Explicitly Excluded)
-
-Blockchain systems
-
-Carbon credit integration
-
-Smart bins and sensors
-
-Fully autonomous decision systems
-
-Native mobile applications
-
-9. Future Scope (Conceptual)
-
-Additional learning signals
-
-Municipality-level analytics
-
-Hardware integrations (future phases only)
-
-10. Acceptance Criteria
+## 10. Acceptance Criteria
 
 The system is considered successful if:
 
-Pickup completion rate improves measurably over time
+- Pickup completion rate improves measurably over time  
+- Assignment efficiency improves compared to baseline  
+- Kabadiwala income stability increases  
+- System operates reliably for at least 30 days  
 
-Assignment efficiency improves compared to baseline
+---
 
-Kabadiwala income stability increases
+## 11. Conclusion
 
-System operates reliably for 30 days
+This project demonstrates that **incremental, ethical intelligence embedded within real-world coordination systems** can deliver measurable impact without relying on opaque or over-automated solutions.
 
-11. Conclusion
+The system prioritizes **explainability, adaptability, and operational realism**, making it suitable for both academic evaluation and real-world pilot deployments.
 
-This project demonstrates that incremental, ethical intelligence embedded within real-world coordination systems can deliver measurable impact without relying on opaque or over-automated solutions.
-
-The system prioritizes explainability, adaptability, and operational realism, making it suitable for both academic evaluation and real-world pilots.
+---
