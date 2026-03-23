@@ -1,0 +1,4 @@
+$kind: collection
+name: "👤 Citizen"
+order: 4000
+description: Endpoints for citizen profile and preferences management.

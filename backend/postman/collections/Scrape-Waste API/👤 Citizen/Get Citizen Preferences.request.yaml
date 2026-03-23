@@ -1,0 +1,20 @@
+$kind: http-request
+name: Get Citizen Preferences
+method: GET
+url: '{{baseUrl}}/api/citizen/preferences'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response has preferences data", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.be.an("object");
+      });

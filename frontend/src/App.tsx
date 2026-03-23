@@ -47,6 +47,8 @@ import GarbageScheduleUpload from "./pages/admin/GarbageScheduleUpload";
 import ComplaintsManagement from "./pages/admin/ComplaintsManagement";
 import ReportsMetrics from "./pages/admin/ReportsMetrics";
 
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
 const App = () => (
   <AuthProvider>
     <TooltipProvider>
@@ -55,50 +57,77 @@ const App = () => (
       
       <BrowserRouter>
         <Routes>
-          {/* Common Routes */}
+          {/* ================= PUBLIC ROUTES ================= */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
           <Route path="/error" element={<ErrorPage />} />
 
-          {/* Citizen Routes */}
-          <Route path="/citizen" element={<CitizenDashboard />} />
-          <Route path="/citizen/locality" element={<LocalitySelection />} />
-          <Route path="/citizen/rates" element={<ScrapRatesView />} />
-          <Route path="/citizen/create-pickup" element={<CreatePickup />} />
-          <Route path="/citizen/pickup-confirmation" element={<PickupConfirmation />} />
-          <Route path="/citizen/pickups" element={<MyPickupsList />} />
-          <Route path="/citizen/pickups/:id" element={<PickupDetails />} />
-          <Route path="/citizen/payments" element={<PaymentStatus />} />
-          <Route path="/citizen/garbage-timing" element={<GarbageTiming />} />
-          <Route path="/citizen/notifications" element={<NotificationsCenter />} />
-          <Route path="/citizen/account" element={<AccountPage />} />
-          <Route path="/citizen/map" element={<MapPage />} />
+          {/* ================= CITIZEN ROUTES ================= */}
+          <Route
+            path="/citizen/*"
+            element={
+              <ProtectedRoute allowedRoles={["citizen"]}>
+                <Routes>
+                  <Route index element={<CitizenDashboard />} />
+                  <Route path="locality" element={<LocalitySelection />} />
+                  <Route path="rates" element={<ScrapRatesView />} />
+                  <Route path="create-pickup" element={<CreatePickup />} />
+                  <Route path="pickup-confirmation" element={<PickupConfirmation />} />
+                  <Route path="pickups" element={<MyPickupsList />} />
+                  <Route path="pickups/:id" element={<PickupDetails />} />
+                  <Route path="payments" element={<PaymentStatus />} />
+                  <Route path="garbage-timing" element={<GarbageTiming />} />
+                  <Route path="notifications" element={<NotificationsCenter />} />
+                  <Route path="account" element={<AccountPage />} />
+                  <Route path="map" element={<MapPage />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Kabadiwala Routes */}
-          <Route path="/kabadiwala" element={<KabadiwalaDashboard />} />
-          <Route path="/kabadiwala/pickups" element={<TodayPickupsList />} />
-          <Route path="/kabadiwala/pickups/:id" element={<KabadiPickupDetails />} />
-          <Route path="/kabadiwala/pickups/:id/complete" element={<PickupCompletion />} />
-          <Route path="/kabadiwala/route" element={<RouteOptimization />} />
-          <Route path="/kabadiwala/notifications" element={<NotificationsCenterKAB />} />
-          <Route path="/kabadiwala/earnings" element={<EarningsSummary />} />
-          <Route path="/kabadiwala/trust-score" element={<TrustScore />} />
-          <Route path="/kabadiwala/account" element={<KabadiAccountPage />} />
+          {/* ================= KABADIWALA ROUTES ================= */}
+          <Route
+            path="/kabadiwala/*"
+            element={
+              <ProtectedRoute allowedRoles={["kabadiwala"]}>
+                <Routes>
+                  <Route index element={<KabadiwalaDashboard />} />
+                  <Route path="pickups" element={<TodayPickupsList />} />
+                  <Route path="pickups/:id" element={<KabadiPickupDetails />} />
+                  <Route path="pickups/:id/complete" element={<PickupCompletion />} />
+                  <Route path="route" element={<RouteOptimization />} />
+                  <Route path="notifications" element={<NotificationsCenterKAB />} />
+                  <Route path="earnings" element={<EarningsSummary />} />
+                  <Route path="trust-score" element={<TrustScore />} />
+                  <Route path="account" element={<KabadiAccountPage />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/rates" element={<ScrapRateManagement />} />
-          <Route path="/admin/localities" element={<LocalityManagement />} />
-          <Route path="/admin/pickups" element={<PickupAssignmentBoard />} />
-          <Route path="/admin/kabadiwalas" element={<KabadiWalaManagement />} />
-          <Route path="/admin/schedule" element={<GarbageScheduleUpload />} />
-          <Route path="/admin/complaints" element={<ComplaintsManagement />} />
-          <Route path="/admin/reports" element={<ReportsMetrics />} />
-          <Route path="/admin/notifications" element={<NotificationsCenterAdmin />} />
+          {/* ================= ADMIN ROUTES ================= */}
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <Routes>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="rates" element={<ScrapRateManagement />} />
+                  <Route path="localities" element={<LocalityManagement />} />
+                  <Route path="pickups" element={<PickupAssignmentBoard />} />
+                  <Route path="kabadiwalas" element={<KabadiWalaManagement />} />
+                  <Route path="schedule" element={<GarbageScheduleUpload />} />
+                  <Route path="complaints" element={<ComplaintsManagement />} />
+                  <Route path="reports" element={<ReportsMetrics />} />
+                  <Route path="notifications" element={<NotificationsCenterAdmin />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Catch-all */}
+          {/* ================= 404 ================= */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

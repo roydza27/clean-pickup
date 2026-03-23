@@ -1,0 +1,28 @@
+$kind: http-request
+name: Get Garbage Schedule by Locality
+method: GET
+url: '{{baseUrl}}/api/garbage-schedule/{{localityId}}'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Schedule data returned", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.exist;
+      });
+
+      pm.test("Schedule has locality info", function () {
+          const json = pm.response.json();
+          const schedule = Array.isArray(json) ? json[0] : json;
+          if (schedule) {
+              pm.expect(schedule).to.have.any.keys("localityId", "locality", "day", "time", "schedule");
+          }
+      });

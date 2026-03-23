@@ -24,15 +24,18 @@ export default function LoginPage() {
 
   const handleSendOTP = async () => {
     if (phone.length !== 10) return;
+
     setLoading(true);
-    
+
     const result = await sendOTP(phone);
-    
+
+    console.log("OTP result:", result); // 🔥 add this
+
     setLoading(false);
-    
+
     if (result.success) {
-      setStep('otp');
-      // Show dev OTP in dev mode
+      setStep("otp");
+
       if (result.otp) {
         setDevOtp(result.otp);
         toast({

@@ -1,0 +1,27 @@
+$kind: http-request
+name: Verify OTP - Invalid OTP
+method: POST
+url: '{{baseUrl}}/api/auth/verify-otp'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phoneNumber": "9876543210",
+      "otp": "000000"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response has error: Invalid or expired OTP", function () {
+          const json = pm.response.json();
+          pm.expect(json.error).to.equal("Invalid or expired OTP");
+      });

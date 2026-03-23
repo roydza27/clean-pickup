@@ -4,11 +4,12 @@ exports.getSchedule = async (req, res) => {
   try {
     const { localityId } = req.params;
 
-    const [schedules] = await pool.query(
+    const result = await pool.query(
       `SELECT gs.*, l.name as locality_name
        FROM garbage_schedules gs
        JOIN localities l ON gs.locality_id = l.locality_id
-       WHERE gs.locality_id = ? AND gs.is_active = TRUE
+       WHERE gs.locality_id = $1
+       AND gs.is_active = TRUE
        ORDER BY 
          CASE gs.collection_day
            WHEN 'monday' THEN 1
@@ -22,7 +23,8 @@ exports.getSchedule = async (req, res) => {
       [localityId]
     );
 
-    res.json({ schedules });
+    res.json({ schedules: result.rows });
+
   } catch (error) {
     console.error("Get schedule error:", error);
     res.status(500).json({ error: "Failed to fetch garbage schedule" });
@@ -36,11 +38,15 @@ exports.reportMissed = async (req, res) => {
     await pool.query(
       `INSERT INTO missed_garbage_pickups
        (locality_id, scheduled_date, reported_by_user_id, notes)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1,$2,$3,$4)`,
       [localityId, scheduledDate, req.userId, notes]
     );
 
-    res.json({ success: true, message: "Missed pickup reported" });
+    res.json({
+      success: true,
+      message: "Missed pickup reported",
+    });
+
   } catch (error) {
     console.error("Report missed pickup error:", error);
     res.status(500).json({ error: "Failed to report missed pickup" });

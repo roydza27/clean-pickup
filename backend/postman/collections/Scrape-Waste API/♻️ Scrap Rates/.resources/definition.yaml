@@ -1,0 +1,4 @@
+$kind: collection
+name: "♻️ Scrap Rates"
+order: 3000
+description: Endpoints for viewing and managing scrap material rates per locality.

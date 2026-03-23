@@ -1,0 +1,4 @@
+$kind: collection
+name: "🛡️ Admin"
+order: 8000
+description: Admin-only endpoints for managing users, localities, kabadiwala assignments, and system settings.

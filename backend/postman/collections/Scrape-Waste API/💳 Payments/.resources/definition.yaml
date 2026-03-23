@@ -1,0 +1,4 @@
+$kind: collection
+name: "💳 Payments"
+order: 9000
+description: Endpoints for retrieving payment records and updating payment statuses.

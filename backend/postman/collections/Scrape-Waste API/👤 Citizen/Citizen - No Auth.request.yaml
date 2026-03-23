@@ -1,0 +1,17 @@
+$kind: http-request
+name: Citizen - No Auth
+method: GET
+url: '{{baseUrl}}/api/citizen/profile'
+order: 6000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 401 when no auth provided", function () {
+          pm.response.to.have.status(401);
+      });
+
+      pm.test("Error message present", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("message").or.have.property("error");
+      });

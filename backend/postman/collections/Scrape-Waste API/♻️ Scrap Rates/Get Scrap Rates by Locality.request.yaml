@@ -1,0 +1,19 @@
+$kind: http-request
+name: Get Scrap Rates by Locality
+method: GET
+url: '{{baseUrl}}/api/scrap-rates/{{localityId}}'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is an array or object", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.satisfy(function (val) {
+              return Array.isArray(val) || (typeof val === "object" && val !== null);
+          });
+      });

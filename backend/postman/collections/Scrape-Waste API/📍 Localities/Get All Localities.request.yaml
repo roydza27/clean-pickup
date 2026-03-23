@@ -1,0 +1,24 @@
+$kind: http-request
+name: Get All Localities
+method: GET
+url: '{{baseUrl}}/api/localities'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is an array", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.be.an("array");
+      });
+
+      // Save first locality id to collection variable
+      const json = pm.response.json();
+      if (json.length > 0) {
+          pm.collectionVariables.set("localityId", json[0].locality_id || json[0].id);
+          console.log("localityId saved:", json[0].locality_id || json[0].id);
+      }

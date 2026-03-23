@@ -1,0 +1,28 @@
+$kind: http-request
+name: Get All Pickups (Citizen)
+method: GET
+url: '{{baseUrl}}/api/pickups'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is an array", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.be.an("array");
+      });
+
+      pm.test("Each pickup has required fields", function () {
+          const json = pm.response.json();
+          if (json.length > 0) {
+              const pickup = json[0];
+              pm.expect(pickup).to.have.any.keys("_id", "id", "status", "localityId");
+          }
+      });

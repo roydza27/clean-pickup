@@ -1,0 +1,4 @@
+$kind: collection
+name: "🔧 Kabadiwala"
+order: 7000
+description: Endpoints for Kabadiwala (scrap dealer) to manage assigned pickups and view earnings.

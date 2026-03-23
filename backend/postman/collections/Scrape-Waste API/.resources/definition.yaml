@@ -1,0 +1,32 @@
+$kind: collection
+name: Scrape-Waste API
+description: |-
+  Complete API test suite for the Scrape-Waste backend — a waste management platform. Covers Auth (OTP-based), Localities, Scrap Rates, Citizen, Pickups, Garbage Schedule, Kabadiwala, Admin, and Payments endpoints. Auth is MVP: the token is the user_id. Run the Auth folder first to populate tokens.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:3000'
+    description: Base URL for the API
+  - key: citizenToken
+    value: ''
+    description: Token for citizen role (set by verify-otp test)
+  - key: kabadiwalaToken
+    value: ''
+    description: Token for kabadiwala role
+  - key: adminToken
+    value: ''
+    description: Token for admin role
+  - key: localityId
+    value: '1'
+    description: Default locality ID (overridden by get-localities test)
+  - key: pickupId
+    value: ''
+    description: Pickup ID (set by create-pickup test)
+  - key: lastOtp
+    value: ''
+    description: Last OTP received (set by send-otp test)
+  - key: citizenUserId
+    value: ''
+    description: Citizen user ID (set by verify-otp test)
+  - key: kabadiwalaUserId
+    value: ''
+    description: Kabadiwala user ID (set manually or by admin flow)

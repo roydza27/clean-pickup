@@ -1,0 +1,54 @@
+$kind: http-request
+name: Verify OTP (Citizen Login)
+method: POST
+url: '{{baseUrl}}/api/auth/verify-otp'
+order: 4000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phoneNumber": "9876543210",
+      "otp": "{{lastOtp}}",
+      "role": "citizen"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response has success: true", function () {
+          const json = pm.response.json();
+          pm.expect(json.success).to.be.true;
+      });
+
+      pm.test("Response has token field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("token");
+      });
+
+      pm.test("Response has user object with userId, phoneNumber, role", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("user");
+          pm.expect(json.user).to.have.property("userId");
+          pm.expect(json.user).to.have.property("phoneNumber");
+          pm.expect(json.user).to.have.property("role");
+      });
+
+      // Save token and userId to collection variables
+      if (pm.response.code === 200) {
+          const json = pm.response.json();
+          if (json.token) {
+              pm.collectionVariables.set("citizenToken", json.token);
+              console.log("citizenToken saved:", json.token);
+          }
+          if (json.user && json.user.userId) {
+              pm.collectionVariables.set("citizenUserId", json.user.userId);
+              console.log("citizenUserId saved:", json.user.userId);
+          }
+      }

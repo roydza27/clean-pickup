@@ -1,0 +1,40 @@
+$kind: http-request
+name: Send OTP
+method: POST
+url: '{{baseUrl}}/api/auth/send-otp'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phoneNumber": "9876543210"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response has success: true", function () {
+          const json = pm.response.json();
+          pm.expect(json.success).to.be.true;
+      });
+
+      pm.test("Response has otp field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("otp");
+      });
+
+      // Save OTP to collection variable for use in verify-otp
+      if (pm.response.code === 200) {
+          const json = pm.response.json();
+          if (json.otp) {
+              pm.collectionVariables.set("lastOtp", json.otp);
+              console.log("OTP saved:", json.otp);
+          }
+      }

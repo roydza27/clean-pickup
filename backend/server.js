@@ -4,14 +4,20 @@ const pool = require("./config/database");
 
 const PORT = process.env.PORT || 3000;
 
-// DB check
-pool.getConnection()
-  .then(conn => {
-    console.log("✅ MySQL connected");
-    conn.release();
-  })
-  .catch(err => console.error("❌ DB error:", err.message));
+async function startServer() {
+  try {
+    // Test DB connection
+    await pool.query("SELECT 1");
+    console.log("✅ PostgreSQL connected");
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("❌ DB connection failed:", err.message);
+    process.exit(1);
+  }
+}
+
+startServer();

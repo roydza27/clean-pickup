@@ -1,0 +1,30 @@
+$kind: http-request
+name: Create Pickup - No Auth
+method: POST
+url: '{{baseUrl}}/api/pickups'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "localityId": "{{localityId}}",
+      "address": "123 Test Street",
+      "scrapItems": [{ "material": "newspaper", "estimatedWeight": 5 }],
+      "preferredDate": "2025-04-01",
+      "preferredTime": "morning"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 401 Unauthorized", function () {
+          pm.response.to.have.status(401);
+      });
+
+      pm.test("Error message present", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("message", "error", "msg");
+      });

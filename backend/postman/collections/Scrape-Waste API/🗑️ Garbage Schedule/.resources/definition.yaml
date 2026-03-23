@@ -1,0 +1,4 @@
+$kind: collection
+name: "🗑️ Garbage Schedule"
+order: 6000
+description: Endpoints for viewing garbage collection schedules and reporting missed pickups.

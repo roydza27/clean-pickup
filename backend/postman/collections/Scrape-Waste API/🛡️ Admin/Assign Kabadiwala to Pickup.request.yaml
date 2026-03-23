@@ -1,0 +1,28 @@
+$kind: http-request
+name: Assign Kabadiwala to Pickup
+method: PATCH
+url: '{{baseUrl}}/api/admin/pickups/{{pickupId}}/assign'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Authorization
+    value: 'Bearer {{adminToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "kabadiwalaId": "{{kabadiwalaUserId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Kabadiwala assigned", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("message", "success", "pickup", "_id");
+      });

@@ -1,0 +1,4 @@
+$kind: collection
+name: "❤️ Health"
+order: 10000
+description: Health check endpoint to verify the API server is running.

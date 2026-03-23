@@ -1,0 +1,20 @@
+$kind: http-request
+name: Get Locality by Invalid Pincode
+method: GET
+url: '{{baseUrl}}/api/localities/pincode/000000'
+order: 3000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 404 or 200 with empty array", function () {
+          if (pm.response.code === 200) {
+              const json = pm.response.json();
+              // If 200, body should be empty array or null
+              pm.expect(
+                  Array.isArray(json) ? json.length === 0 : true
+              ).to.be.true;
+          } else {
+              pm.response.to.have.status(404);
+          }
+      });

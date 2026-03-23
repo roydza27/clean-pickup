@@ -1,0 +1,4 @@
+$kind: collection
+name: "🚛 Pickups"
+order: 5000
+description: Endpoints for creating and managing scrap pickup requests by citizens.

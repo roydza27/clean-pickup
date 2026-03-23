@@ -1,0 +1,31 @@
+$kind: http-request
+name: Health Check
+method: GET
+url: '{{baseUrl}}/health'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response time is acceptable (< 500ms)", function () {
+          pm.expect(pm.response.responseTime).to.be.below(500);
+      });
+
+      pm.test("Server is healthy", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("status", "ok", "healthy", "message");
+          const status = json.status || json.message || "";
+          pm.expect(status.toLowerCase()).to.satisfy(
+              (s) => s.includes("ok") || s.includes("healthy") || s.includes("up") || s.includes("running"),
+              "Expected server status to indicate healthy state"
+          );
+      });
+
+      pm.test("Response has uptime or timestamp", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("uptime", "timestamp", "time", "version", "status");
+      });

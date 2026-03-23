@@ -1,0 +1,4 @@
+$kind: collection
+name: "\U0001F4CD Localities"
+order: 2000
+description: Endpoints for retrieving locality information.

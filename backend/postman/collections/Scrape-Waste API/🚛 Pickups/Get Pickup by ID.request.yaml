@@ -1,0 +1,24 @@
+$kind: http-request
+name: Get Pickup by ID
+method: GET
+url: '{{baseUrl}}/api/pickups/{{pickupId}}'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Pickup ID matches", function () {
+          const json = pm.response.json();
+          const id = json._id || json.id || (json.pickup && (json.pickup._id || json.pickup.id));
+          const savedId = pm.collectionVariables.get("pickupId");
+          if (savedId) {
+              pm.expect(id).to.equal(savedId);
+          }
+      });

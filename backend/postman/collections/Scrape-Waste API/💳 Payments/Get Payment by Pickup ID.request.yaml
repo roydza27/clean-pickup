@@ -1,0 +1,26 @@
+$kind: http-request
+name: Get Payment by Pickup ID
+method: GET
+url: '{{baseUrl}}/api/payments/pickup/{{pickupId}}'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Payment data returned", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.exist;
+      });
+
+      pm.test("Payment has amount and status", function () {
+          const json = pm.response.json();
+          const payment = json.payment || json;
+          pm.expect(payment).to.have.any.keys("amount", "status");
+      });

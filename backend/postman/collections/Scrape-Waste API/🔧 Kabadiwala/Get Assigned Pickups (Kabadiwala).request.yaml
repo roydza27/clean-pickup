@@ -1,0 +1,27 @@
+$kind: http-request
+name: Get Assigned Pickups (Kabadiwala)
+method: GET
+url: '{{baseUrl}}/api/kabadiwala/pickups'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{kabadiwalaToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is an array", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.be.an("array");
+      });
+
+      pm.test("Each pickup has status field", function () {
+          const json = pm.response.json();
+          if (json.length > 0) {
+              pm.expect(json[0]).to.have.any.keys("status", "_id", "id");
+          }
+      });

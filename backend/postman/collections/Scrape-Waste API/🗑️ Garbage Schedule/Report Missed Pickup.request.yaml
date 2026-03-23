@@ -1,0 +1,30 @@
+$kind: http-request
+name: Report Missed Pickup
+method: POST
+url: '{{baseUrl}}/api/garbage-schedule/missed'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "localityId": "{{localityId}}",
+      "date": "2025-03-28",
+      "description": "Garbage truck did not come today morning"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 201", function () {
+          pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });
+
+      pm.test("Report submitted successfully", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("message", "success", "report", "_id", "id");
+      });

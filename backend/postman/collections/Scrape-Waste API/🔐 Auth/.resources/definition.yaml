@@ -1,0 +1,4 @@
+$kind: collection
+name: "\U0001F510 Auth"
+order: 1000
+description: OTP-based authentication endpoints. Run these first to populate citizenToken, kabadiwalaToken, and adminToken collection variables.

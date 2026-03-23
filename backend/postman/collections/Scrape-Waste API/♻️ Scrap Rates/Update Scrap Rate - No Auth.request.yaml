@@ -1,0 +1,28 @@
+$kind: http-request
+name: Update Scrap Rate - No Auth
+method: POST
+url: '{{baseUrl}}/api/scrap-rates/'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "localityId": "1",
+      "material": "plastic",
+      "ratePerKg": 15
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 401", function () {
+          pm.response.to.have.status(401);
+      });
+
+      pm.test("Response has error: Token required", function () {
+          const json = pm.response.json();
+          pm.expect(json.error).to.equal("Token required");
+      });

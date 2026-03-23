@@ -72,27 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //       pincode: storedUser.pincode,
   //     });
   //   }
-    
-  //   // if (FIREBASE_CONFIGURED && auth) {
-  //   //   const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-  //   //     if (firebaseUser && !storedUser) {
-  //   //       const existingRole = localStorage.getItem('user_role') as UserRole || 'citizen';
-  //   //       const normalizedUser: User = {
-  //   //         id: firebaseUser.uid,
-  //   //         name: firebaseUser.displayName || 'User',
-  //   //         email: firebaseUser.email || undefined,
-  //   //         role: existingRole,
-  //   //       };
-  //   //       setUser(normalizedUser);
-  //   //       localStorage.setItem('user', JSON.stringify(normalizedUser));
-  //   //     }
-  //   //     setIsLoading(false);
-  //   //   });
-  //   //   return () => unsubscribe();
-  //   // } else {
-  //   //   setIsLoading(false);
-  //   // }
-  // }, []);
+  
 
   const sendOTP = async (phone: string) => {
     if (USE_DEMO_MODE) return { success: true, otp: '123456' };

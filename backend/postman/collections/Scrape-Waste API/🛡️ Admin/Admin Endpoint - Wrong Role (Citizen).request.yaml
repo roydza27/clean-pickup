@@ -1,0 +1,20 @@
+$kind: http-request
+name: Admin Endpoint - Wrong Role (Citizen)
+method: GET
+url: '{{baseUrl}}/api/admin/users'
+order: 7000
+headers:
+  - key: Authorization
+    value: 'Bearer {{citizenToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 403 Forbidden", function () {
+          pm.response.to.have.status(403);
+      });
+
+      pm.test("Error message present", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.any.keys("message", "error", "msg");
+      });
