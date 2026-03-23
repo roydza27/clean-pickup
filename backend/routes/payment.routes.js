@@ -1,9 +1,11 @@
 const router = require("express").Router();
 const controller = require("../controllers/payment.controller");
-const auth = require("../middleware/auth.middleware");
-const role = require("../middleware/role.middleware");
+const authenticate = require("../middleware/authenticate");
+const authorize = require("../middleware/authorize");
 
-router.get("/citizen", auth, role("citizen"), controller.getCitizenPayments);
-router.put("/:paymentId/status", auth, controller.updateStatus);
+router.get("/my-payments",          authenticate, authorize("citizen"),          controller.getCitizenPayments);
+router.get("/",                     authenticate, authorize("admin"),             controller.getAllPayments);
+router.get("/pickup/:requestId",    authenticate, authorize("citizen", "admin"),  controller.getPaymentByPickup);
+router.put("/:paymentId/status",    authenticate, authorize("citizen", "admin"),  controller.updateStatus);
 
 module.exports = router;

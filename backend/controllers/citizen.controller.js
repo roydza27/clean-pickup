@@ -1,171 +1,135 @@
-const pool = require("../config/database");
+const { query, queryOne } = require('../shared/db/index');
+const NotFoundError = require('../shared/errors/NotFoundError');
+const ValidationError = require('../shared/errors/ValidationError');
 
-// ================================
-// GET CITIZEN PROFILE
-// ================================
-exports.getProfile = async (req, res) => {
+// ─── GET CITIZEN PROFILE ──────────────────────────────────────────────────────
+
+exports.getProfile = async (req, res, next) => {
   try {
-
-    const result = await pool.query(
-      `SELECT u.*, cp.*, 
-              l.name as locality_name, 
-              l.pincode, 
-              l.city
+    const row = await queryOne(
+      `SELECT u.user_id, u.name, u.phone_number, u.role, u.created_at,
+              cp.profile_id, cp.locality_id, cp.address_line1, cp.address_line2,
+              cp.landmark, cp.preferred_language, cp.notification_enabled,
+              l.name AS locality_name, l.pincode, l.city
        FROM users u
        JOIN citizen_profiles cp ON u.user_id = cp.user_id
-       LEFT JOIN localities l ON cp.locality_id = l.locality_id
+       LEFT JOIN localities l   ON cp.locality_id = l.locality_id
        WHERE u.user_id = $1`,
-      [req.userId]
+      [req.user.userId]
     );
 
-    res.json({ profile: result.rows[0] });
+    if (!row) {
+      throw new NotFoundError('Citizen profile not found', 'PROFILE_NOT_FOUND');
+    }
 
-  } catch (error) {
-    console.error("Get profile error:", error);
-    res.status(500).json({ error: "Failed to fetch profile" });
+    res.json({ success: true, profile: row });
+  } catch (err) {
+    next(err);
   }
 };
 
-// ================================
-// UPDATE CITIZEN PROFILE
-// ================================
-exports.updateProfile = async (req, res) => {
+// ─── UPDATE CITIZEN PROFILE ───────────────────────────────────────────────────
+
+exports.updateProfile = async (req, res, next) => {
   try {
+    const { name, age, preferredLanguage, localityId, addressLine1, addressLine2, landmark } = req.body;
+    const userId = req.user.userId;
 
-    const {
-      name,
-      age,
-      preferred_language,
-      preferredLanguage,
-      localityId,
-      addressLine1,
-      addressLine2,
-      landmark,
-    } = req.body;
-
-    // update users table
     if (name !== undefined) {
-      await pool.query(
-        `UPDATE users SET name = $1 WHERE user_id = $2`,
-        [name, req.userId]
-      );
+      await query('UPDATE users SET name = $1 WHERE user_id = $2', [name, userId]);
     }
 
-    const fields = [];
-    const values = [];
-    let index = 1;
+    const fields  = [];
+    const values  = [];
+    let idx = 1;
 
     if (age !== undefined && age !== null) {
       const parsedAge = Number(age);
-
       if (!Number.isInteger(parsedAge) || parsedAge <= 0) {
-        return res.status(400).json({ error: "Invalid age" });
+        throw new ValidationError('Invalid age', [{ field: 'age', message: 'Must be a positive integer' }]);
       }
-
-      fields.push(`age = $${index++}`);
-      values.push(parsedAge);
+      fields.push(`age = $${idx++}`); values.push(parsedAge);
     }
 
-    if (preferred_language !== undefined) {
-      fields.push(`preferred_language = $${index++}`);
-      values.push(preferred_language);
-    } 
-    else if (preferredLanguage !== undefined) {
-      fields.push(`preferred_language = $${index++}`);
-      values.push(preferredLanguage);
-    }
-
-    if (localityId !== undefined) {
-      fields.push(`locality_id = $${index++}`);
-      values.push(localityId);
-    }
-
-    if (addressLine1 !== undefined) {
-      fields.push(`address_line1 = $${index++}`);
-      values.push(addressLine1);
-    }
-
-    if (addressLine2 !== undefined) {
-      fields.push(`address_line2 = $${index++}`);
-      values.push(addressLine2);
-    }
-
-    if (landmark !== undefined) {
-      fields.push(`landmark = $${index++}`);
-      values.push(landmark);
-    }
+    if (preferredLanguage !== undefined) { fields.push(`preferred_language = $${idx++}`); values.push(preferredLanguage); }
+    if (localityId       !== undefined) { fields.push(`locality_id = $${idx++}`);         values.push(localityId); }
+    if (addressLine1     !== undefined) { fields.push(`address_line1 = $${idx++}`);        values.push(addressLine1); }
+    if (addressLine2     !== undefined) { fields.push(`address_line2 = $${idx++}`);        values.push(addressLine2); }
+    if (landmark         !== undefined) { fields.push(`landmark = $${idx++}`);             values.push(landmark); }
 
     if (fields.length > 0) {
-
-      const result = await pool.query(
-        `UPDATE citizen_profiles
-         SET ${fields.join(", ")}
-         WHERE user_id = $${index}`,
-        [...values, req.userId]
+      const updated = await query(
+        `UPDATE citizen_profiles SET ${fields.join(', ')} WHERE user_id = $${idx}`,
+        [...values, userId]
       );
-
-      // insert if profile doesn't exist
-      if (result.rowCount === 0) {
-
-        const columns = fields.map(f => f.split(" = ")[0]).join(", ");
-
-        const placeholders = values
-          .map((_, i) => `$${i + 2}`)
-          .join(", ");
-
-        await pool.query(
-          `INSERT INTO citizen_profiles
-           (user_id, ${columns})
-           VALUES ($1, ${placeholders})`,
-          [req.userId, ...values]
+      if (updated.rowCount === 0) {
+        // Profile doesn't exist yet — insert it
+        const cols  = fields.map((f) => f.split(' = ')[0]).join(', ');
+        const phs   = values.map((_, i) => `$${i + 2}`).join(', ');
+        await query(
+          `INSERT INTO citizen_profiles (user_id, ${cols}) VALUES ($1, ${phs})`,
+          [userId, ...values]
         );
       }
     }
 
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-    });
-
-  } catch (error) {
-    console.error("Update profile error:", error);
-    res.status(500).json({ error: "Failed to update profile" });
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (err) {
+    next(err);
   }
 };
 
-// ================================
-// UPDATE NOTIFICATION PREFERENCES
-// ================================
-exports.updatePreferences = async (req, res) => {
+// ─── UPDATE NOTIFICATION PREFERENCES ─────────────────────────────────────────
+
+exports.updatePreferences = async (req, res, next) => {
   try {
+    const { notifyPickupUpdates, notifyPaymentUpdates, notifyGeneral, notificationEnabled } = req.body;
+    const userId = req.user.userId;
 
-    const {
-      notifyPickupUpdates,
-      notifyPaymentUpdates,
-      notifyGeneral,
-    } = req.body;
-
-    await pool.query(
+    await query(
       `UPDATE citizen_profiles
-       SET notify_pickup_updates = $1,
-           notify_payment_updates = $2,
-           notify_general = $3
-       WHERE user_id = $4`,
-      [
-        notifyPickupUpdates,
-        notifyPaymentUpdates,
-        notifyGeneral,
-        req.userId,
-      ]
+       SET notify_pickup_updates  = COALESCE($1, notify_pickup_updates),
+           notify_payment_updates = COALESCE($2, notify_payment_updates),
+           notify_general         = COALESCE($3, notify_general),
+           notification_enabled   = COALESCE($4, notification_enabled)
+       WHERE user_id = $5`,
+      [notifyPickupUpdates, notifyPaymentUpdates, notifyGeneral, notificationEnabled, userId]
     );
 
-    res.json({
-      success: true,
-      message: "Preferences updated successfully",
-    });
+    res.json({ success: true, message: 'Preferences updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
 
-  } catch (error) {
-    console.error("Update preferences error:", error);
-    res.status(500).json({ error: "Failed to update preferences" });
+// ─── GET PICKUP HISTORY ───────────────────────────────────────────────────────
+
+exports.getPickupHistory = async (req, res, next) => {
+  try {
+    const citizenId = req.user.userId;
+
+    const result = await query(
+      `SELECT pr.*,
+              l.name AS locality_name,
+              pa.actual_weight,
+              pa.pickup_completed_at,
+              ku.name AS kabadiwala_name,
+              pay.amount AS payment_amount,
+              pay.payment_status
+       FROM pickup_requests pr
+       LEFT JOIN localities l         ON pr.locality_id   = l.locality_id
+       LEFT JOIN pickup_assignments pa ON pr.request_id   = pa.request_id
+                                      AND pa.status = 'completed'
+       LEFT JOIN users ku             ON pa.kabadiwala_id = ku.user_id
+       LEFT JOIN payment_records pay  ON pa.assignment_id = pay.assignment_id
+       WHERE pr.citizen_id = $1
+         AND pr.status = 'completed'
+       ORDER BY pa.pickup_completed_at DESC`,
+      [citizenId]
+    );
+
+    res.json({ success: true, history: result.rows });
+  } catch (err) {
+    next(err);
   }
 };

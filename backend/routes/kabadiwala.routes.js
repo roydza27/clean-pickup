@@ -1,10 +1,12 @@
 const router = require("express").Router();
 const controller = require("../controllers/kabadiwala.controller");
-const auth = require("../middleware/auth.middleware");
-const role = require("../middleware/role.middleware");
+const authenticate = require("../middleware/authenticate");
+const authorize = require("../middleware/authorize");
 
-router.get("/pickups", auth, role("kabadiwala"), controller.getPickups);
-router.post("/complete-pickup", auth, role("kabadiwala"), controller.completePickup);
-router.get("/earnings", auth, role("kabadiwala"), controller.getEarnings);
+router.get("/profile",   authenticate, authorize("kabadiwala"), controller.getProfile);
+router.get("/pickups",   authenticate, authorize("kabadiwala"), controller.getPickups);
+router.post("/complete-pickup", authenticate, authorize("kabadiwala"), controller.completePickup);
+router.patch("/pickups/:assignmentId/status", authenticate, authorize("kabadiwala"), controller.updatePickupStatus);
+router.get("/earnings",  authenticate, authorize("kabadiwala"), controller.getEarnings);
 
 module.exports = router;

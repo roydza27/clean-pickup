@@ -1,146 +1,225 @@
-const pool = require("../config/database");
-const { generateOTP } = require("../utils/otp.util");
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { getRedisClient } = require('../config/redis');
+const { transaction, queryOne } = require('../shared/db/index');
+const RateLimitError = require('../shared/errors/RateLimitError');
+const AuthError = require('../shared/errors/AuthError');
+const ValidationError = require('../shared/errors/ValidationError');
+const logger = require('../shared/utils/logger');
 
-exports.sendOTP = async (req, res) => {
+const OTP_TTL_SECONDS       = 300;   // AUTH-02: 5 minutes
+const OTP_FAIL_TTL_SECONDS  = 900;   // AUTH-04: 15-minute lockout
+const OTP_MAX_FAILS         = 5;     // AUTH-04
+const OTP_RATE_LIMIT        = 5;     // AUTH-01: 5 per hour
+const OTP_RATE_TTL_SECONDS  = 3600;  // AUTH-01: 1 hour window
+const BCRYPT_ROUNDS         = 8;
+
+// ─── Send OTP ────────────────────────────────────────────────────────────────
+
+exports.sendOTP = async (req, res, next) => {
   try {
     const { phoneNumber } = req.body;
 
-    if (!phoneNumber || phoneNumber.length !== 10) {
-      return res.status(400).json({ error: "Invalid phone number" });
+    if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+      throw new ValidationError('Invalid phone number', [
+        { field: 'phoneNumber', message: 'Must be a 10-digit number' },
+      ]);
     }
 
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const redis = getRedisClient();
 
-    // Invalidate old OTPs
-    await pool.query(
-      `UPDATE otp_verification 
-       SET is_verified = TRUE 
-       WHERE phone_number = $1`,
-      [phoneNumber]
-    );
+    // AUTH-01: Rate limit — 5 OTPs per hour per phone number
+    const rateKey = `otp_req:${phoneNumber}`;
+    const count = await redis.incr(rateKey);
+    if (count === 1) {
+      await redis.expire(rateKey, OTP_RATE_TTL_SECONDS);
+    }
+    if (count > OTP_RATE_LIMIT) {
+      throw new RateLimitError(
+        'Too many OTP requests. Try again in 1 hour.',
+        'OTP_RATE_EXCEEDED'
+      );
+    }
 
-    // Insert new OTP
-    await pool.query(
-      `INSERT INTO otp_verification (phone_number, otp_code, expires_at)
-       VALUES ($1,$2,$3)`,
-      [phoneNumber, otp, expiresAt]
-    );
+    // Generate cryptographically secure 6-digit OTP
+    const otp = crypto.randomInt(100000, 1000000).toString();
 
-    res.json({
-      success: true,
-      otp, // only for dev
-    });
+    // AUTH-02: Store hashed OTP in Redis with 5-minute TTL
+    const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
+    await redis.setex(`otp:${phoneNumber}`, OTP_TTL_SECONDS, otpHash);
 
+    // AUTH-05: Never return OTP in response. Log only in development.
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug(`[DEV ONLY] OTP for ${phoneNumber.slice(0, 4)}XXXXXX: ${otp}`);
+    }
+
+    res.json({ success: true, message: 'OTP sent successfully' });
   } catch (err) {
-    console.error("Send OTP error:", err);
-    res.status(500).json({ error: "Failed to send OTP" });
+    next(err);
   }
 };
 
+// ─── Verify OTP ──────────────────────────────────────────────────────────────
 
-exports.verifyOTP = async (req, res) => {
+exports.verifyOTP = async (req, res, next) => {
   try {
     const { phoneNumber, otp, role } = req.body;
 
-    if (!phoneNumber || !otp) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing data",
-      });
+    if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+      throw new ValidationError('Invalid phone number', [
+        { field: 'phoneNumber', message: 'Must be a 10-digit number' },
+      ]);
+    }
+    if (!otp || !/^\d{6}$/.test(otp)) {
+      throw new ValidationError('Invalid OTP', [
+        { field: 'otp', message: 'Must be a 6-digit number' },
+      ]);
     }
 
-    const result = await pool.query(
-      `SELECT *
-       FROM otp_verification
-       WHERE phone_number = $1
-       AND otp_code = $2
-       AND is_verified = FALSE
-       AND expires_at > CURRENT_TIMESTAMP
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [phoneNumber, otp]
-    );
+    const redis = getRedisClient();
 
-    if (result.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid or expired OTP",
-      });
+    // AUTH-04: Check lockout before verifying
+    const failKey = `otp_fail:${phoneNumber}`;
+    const failCount = parseInt((await redis.get(failKey)) ?? '0', 10);
+    if (failCount >= OTP_MAX_FAILS) {
+      throw new RateLimitError(
+        'Account locked. Request a new OTP after 15 minutes.',
+        'OTP_MAX_ATTEMPTS'
+      );
     }
 
-    const otpRecord = result.rows[0];
+    // AUTH-02: Retrieve stored OTP hash
+    const otpKey = `otp:${phoneNumber}`;
+    const otpHash = await redis.get(otpKey);
+    if (!otpHash) {
+      throw new AuthError('OTP has expired. Please request a new one.', 400, 'OTP_EXPIRED');
+    }
 
-    // mark OTP verified
-    await pool.query(
-      `UPDATE otp_verification
-       SET is_verified = TRUE
-       WHERE otp_id = $1`,
-      [otpRecord.otp_id]
-    );
+    // Verify OTP against stored hash
+    const isValid = await bcrypt.compare(otp, otpHash);
+    if (!isValid) {
+      // AUTH-04: Increment failed attempts
+      const newCount = await redis.incr(failKey);
+      if (newCount === 1) {
+        await redis.expire(failKey, OTP_FAIL_TTL_SECONDS);
+      }
+      throw new AuthError('Invalid OTP', 400, 'OTP_INVALID');
+    }
 
-    // check if user exists
-    const userResult = await pool.query(
-      `SELECT * FROM users WHERE phone_number = $1`,
+    // AUTH-03: Delete OTP immediately on success (single-use)
+    await redis.multi()
+      .del(otpKey)
+      .del(failKey)
+      .exec();
+
+    // Check if user already exists
+    const existingUser = await queryOne(
+      'SELECT user_id, phone_number, role, name, is_active FROM users WHERE phone_number = $1',
       [phoneNumber]
     );
 
     let user;
     let isNewUser = false;
 
-    if (userResult.rows.length === 0) {
-
-      const insertUser = await pool.query(
-        `INSERT INTO users (phone_number, role)
-         VALUES ($1,$2)
-         RETURNING user_id, phone_number, role`,
-        [phoneNumber, role || "citizen"]
-      );
-
-      user = insertUser.rows[0];
-
-      if (user.role === "citizen") {
-        await pool.query(
-          `INSERT INTO citizen_profiles (user_id)
-           VALUES ($1)`,
-          [user.user_id]
-        );
+    if (!existingUser) {
+      // AUTH-06: Role required for new users; admin excluded (AUTH-08)
+      if (!role) {
+        throw new AuthError('Role is required for new users', 400, 'ROLE_REQUIRED');
+      }
+      if (!['citizen', 'kabadiwala'].includes(role)) {
+        throw new AuthError('Invalid role', 403, 'ROLE_MISMATCH');
       }
 
-      if (user.role === "kabadiwala") {
-        await pool.query(
-          `INSERT INTO kabadiwala_profiles (user_id)
-           VALUES ($1)`,
-          [user.user_id]
+      // Create user + profile in ONE transaction
+      user = await transaction(async (db) => {
+        const newUser = await db.queryOne(
+          `INSERT INTO users (phone_number, role)
+           VALUES ($1, $2)
+           RETURNING user_id, phone_number, role, name, is_active`,
+          [phoneNumber, role]
         );
-      }
+
+        if (role === 'citizen') {
+          await db.query(
+            'INSERT INTO citizen_profiles (user_id) VALUES ($1)',
+            [newUser.user_id]
+          );
+        } else if (role === 'kabadiwala') {
+          await db.query(
+            'INSERT INTO kabadiwala_profiles (user_id) VALUES ($1)',
+            [newUser.user_id]
+          );
+        }
+
+        return newUser;
+      });
 
       isNewUser = true;
-
     } else {
-      user = userResult.rows[0];
+      user = existingUser;
+
+      // USER-04: Inactive user cannot authenticate
+      if (!user.is_active) {
+        throw new AuthError(
+          'Account is deactivated. Please contact support.',
+          403,
+          'ACCOUNT_DEACTIVATED'
+        );
+      }
+
+      // AUTH-06: Returning users — role mismatch check
+      if (role && role !== user.role) {
+        throw new AuthError(
+          'Role mismatch. This account is registered as a different role.',
+          403,
+          'ROLE_MISMATCH'
+        );
+      }
     }
 
-    // MVP token
-    const token = user.user_id.toString();
+    // Issue JWT
+    const token = jwt.sign(
+      { userId: user.user_id, role: user.role, phoneNumber: user.phone_number },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    // AUTH-07: Store session in Redis
+    const sessionKey = `session:${user.user_id}`;
+    await redis.setex(
+      sessionKey,
+      7 * 24 * 60 * 60, // 7 days
+      JSON.stringify({ userId: user.user_id, role: user.role })
+    );
 
     res.json({
       success: true,
       token,
       user: {
-        userId: user.user_id,
+        userId:      user.user_id,
         phoneNumber: user.phone_number,
-        role: user.role,
-        name: user.name,
+        role:        user.role,
+        name:        user.name,
       },
       isNewUser,
     });
+  } catch (err) {
+    next(err);
+  }
+};
 
-  } catch (error) {
-    console.error("Verify OTP error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to verify OTP",
-    });
+// ─── Logout ──────────────────────────────────────────────────────────────────
+
+exports.logout = async (req, res, next) => {
+  try {
+    const redis = getRedisClient();
+    // AUTH-07: Delete Redis session on logout
+    if (req.user?.userId) {
+      await redis.del(`session:${req.user.userId}`);
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (err) {
+    next(err);
   }
 };

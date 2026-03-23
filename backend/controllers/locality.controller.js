@@ -1,25 +1,28 @@
-const pool = require("../config/database");
+const { query, queryOne } = require('../shared/db/index');
+const NotFoundError = require('../shared/errors/NotFoundError');
 
-exports.getAllLocalities = async (req, res) => {
+exports.getAllLocalities = async (req, res, next) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM localities WHERE is_serviceable = TRUE ORDER BY city, name"
+    const result = await query(
+      'SELECT * FROM localities WHERE is_serviceable = TRUE ORDER BY city, name'
     );
-
-    res.json({ localities: result.rows });
+    res.json({ success: true, localities: result.rows });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch localities" });
+    next(err);
   }
 };
 
-exports.getByPincode = async (req, res) => {
+exports.getByPincode = async (req, res, next) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM localities WHERE pincode = $1 AND is_serviceable = TRUE",
+    const result = await query(
+      'SELECT * FROM localities WHERE pincode = $1 AND is_serviceable = TRUE',
       [req.params.pincode]
     );
-    res.json({ localities: result.rows });
+    if (!result.rows.length) {
+      throw new NotFoundError('No serviceable locality found for this pincode', 'LOCALITY_NOT_FOUND');
+    }
+    res.json({ success: true, localities: result.rows });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch locality" });
+    next(err);
   }
 };

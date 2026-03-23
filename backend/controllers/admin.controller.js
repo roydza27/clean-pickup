@@ -1,151 +1,248 @@
-const pool = require("../config/database");
+const { query, queryOne, transaction } = require('../shared/db/index');
+const { manualAssign } = require('./assignment.controller');
+const NotFoundError = require('../shared/errors/NotFoundError');
+const ValidationError = require('../shared/errors/ValidationError');
 
-// Get all pending pickup requests
-exports.getPendingPickups = async (req, res) => {
+// ─── Get all pending/unassigned pickup requests ───────────────────────────────
+
+exports.getPendingPickups = async (req, res, next) => {
   try {
-    const result = await pool.query(
-      `SELECT pr.*, 
-              u.name as citizen_name, 
-              u.phone_number as citizen_phone,
-              l.name as locality_name, 
+    const result = await query(
+      `SELECT pr.*,
+              u.name  AS citizen_name,
+              u.phone_number AS citizen_phone,
+              l.name  AS locality_name,
               l.city
        FROM pickup_requests pr
-       JOIN users u ON pr.citizen_id = u.user_id
+       JOIN users u      ON pr.citizen_id  = u.user_id
        JOIN localities l ON pr.locality_id = l.locality_id
-       WHERE pr.status = 'pending'
+       WHERE pr.status IN ('requested', 'unassigned_no_availability', 'failed')
        ORDER BY pr.preferred_date, pr.created_at`
     );
 
-    res.json({ requests: result.rows });
-
-  } catch (error) {
-    console.error("Get pending requests error:", error);
-    res.status(500).json({ error: "Failed to fetch pending requests" });
+    res.json({ success: true, requests: result.rows });
+  } catch (err) {
+    next(err);
   }
 };
-// Get available kabadiwalas
-exports.getKabadiwalas = async (req, res) => {
+
+// ─── Get all pickups (admin view) ─────────────────────────────────────────────
+
+exports.getAllPickups = async (req, res, next) => {
+  try {
+    const { status, localityId, date } = req.query;
+
+    let sql = `
+      SELECT pr.*,
+             u.name  AS citizen_name,
+             u.phone_number AS citizen_phone,
+             l.name  AS locality_name,
+             pa.assignment_id,
+             pa.status AS assignment_status,
+             ku.name AS kabadiwala_name
+      FROM pickup_requests pr
+      JOIN users u      ON pr.citizen_id  = u.user_id
+      JOIN localities l ON pr.locality_id = l.locality_id
+      LEFT JOIN pickup_assignments pa ON pr.request_id = pa.request_id
+                                     AND pa.status NOT IN ('reassigned', 'failed')
+      LEFT JOIN users ku ON pa.kabadiwala_id = ku.user_id
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let idx = 1;
+
+    if (status)     { sql += ` AND pr.status = $${idx++}`;         params.push(status); }
+    if (localityId) { sql += ` AND pr.locality_id = $${idx++}`;    params.push(localityId); }
+    if (date)       { sql += ` AND pr.preferred_date = $${idx++}`; params.push(date); }
+
+    sql += ' ORDER BY pr.preferred_date DESC, pr.created_at DESC';
+
+    const result = await query(sql, params);
+    res.json({ success: true, requests: result.rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Get available kabadiwalas ────────────────────────────────────────────────
+
+exports.getKabadiwalas = async (req, res, next) => {
   try {
     const { localityId } = req.query;
 
-    let query = `
+    let sql = `
       SELECT u.user_id, u.name, u.phone_number,
-             kp.trust_score, kp.total_pickups, kp.completed_pickups, kp.is_available,
-             l.name as service_locality_name
+             kp.reliability_score, kp.total_pickups, kp.completed_pickups, kp.is_available,
+             l.name AS service_locality_name
       FROM users u
       JOIN kabadiwala_profiles kp ON u.user_id = kp.user_id
-      LEFT JOIN localities l ON kp.service_locality_id = l.locality_id
+      LEFT JOIN localities l      ON kp.service_locality_id = l.locality_id
       WHERE u.role = 'kabadiwala' AND u.is_active = TRUE
     `;
 
     const params = [];
-
     if (localityId) {
-      query += ` AND kp.service_locality_id = $1`;
+      sql += ' AND kp.service_locality_id = $1';
       params.push(localityId);
     }
 
-    query += ` ORDER BY kp.trust_score DESC, kp.is_available DESC`;
+    sql += ' ORDER BY kp.reliability_score DESC, kp.is_available DESC';
 
-    const result = await pool.query(query, params);
-
-    res.json({ kabadiwalas: result.rows });
-
-  } catch (error) {
-    console.error("Get kabadiwalas error:", error);
-    res.status(500).json({ error: "Failed to fetch kabadiwalas" });
+    const result = await query(sql, params);
+    res.json({ success: true, kabadiwalas: result.rows });
+  } catch (err) {
+    next(err);
   }
 };
 
-// Assign pickup to kabadiwala
-exports.assignPickup = async (req, res) => {
-  const client = await pool.connect();
+// ─── Assign pickup to kabadiwala (manual override) ────────────────────────────
 
+exports.assignPickup = async (req, res, next) => {
   try {
-    const { requestId, kabadiwalId, assignedDate, sequenceOrder } = req.body;
+    const { requestId, kabadiwalId, adminNote } = req.body;
 
-    await client.query("BEGIN");
-
-    const existing = await client.query(
-      "SELECT assignment_id FROM pickup_assignments WHERE request_id = $1",
-      [requestId]
-    );
-
-    if (existing.rows.length > 0) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Pickup already assigned" });
+    if (!adminNote) {
+      throw new ValidationError('Admin note is required for manual assignment', [
+        { field: 'adminNote', message: 'Required' },
+      ]);
     }
 
-    const result = await client.query(
-      `INSERT INTO pickup_assignments 
-       (request_id, kabadiwala_id, assigned_date, sequence_order)
-       VALUES ($1,$2,$3,$4)
-       RETURNING assignment_id`,
-      [requestId, kabadiwalId, assignedDate, sequenceOrder || 1]
+    await manualAssign(requestId, kabadiwalId, adminNote, req.user.userId);
+
+    res.json({ success: true, message: 'Pickup assigned successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Get all users ────────────────────────────────────────────────────────────
+
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const { role, isActive } = req.query;
+
+    let sql = `
+      SELECT u.user_id, u.phone_number, u.name, u.role, u.is_active, u.created_at
+      FROM users u
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let idx = 1;
+
+    if (role)     { sql += ` AND u.role = $${idx++}`;      params.push(role); }
+    if (isActive !== undefined) {
+      sql += ` AND u.is_active = $${idx++}`;
+      params.push(isActive === 'true');
+    }
+
+    sql += ' ORDER BY u.created_at DESC';
+
+    const result = await query(sql, params);
+    res.json({ success: true, users: result.rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Deactivate user (soft delete) ───────────────────────────────────────────
+
+exports.deactivateUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await queryOne('SELECT user_id, role FROM users WHERE user_id = $1', [userId]);
+    if (!user) {
+      throw new NotFoundError('User not found', 'USER_NOT_FOUND');
+    }
+    if (user.role === 'admin') {
+      throw new ValidationError('Cannot deactivate admin users', [
+        { field: 'userId', message: 'Admin accounts cannot be deactivated via API' },
+      ]);
+    }
+
+    await query('UPDATE users SET is_active = FALSE WHERE user_id = $1', [userId]);
+
+    res.json({ success: true, message: 'User deactivated' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Create locality ──────────────────────────────────────────────────────────
+
+exports.createLocality = async (req, res, next) => {
+  try {
+    const { name, pincode, city, state, centroidLat, centroidLng } = req.body;
+
+    const result = await query(
+      `INSERT INTO localities (name, pincode, city, state, centroid_lat, centroid_lng)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING locality_id`,
+      [name, pincode, city, state, centroidLat, centroidLng]
     );
 
-    await client.query(
-      `UPDATE pickup_requests 
-       SET status = 'assigned' 
-       WHERE request_id = $1`,
-      [requestId]
-    );
+    res.status(201).json({ success: true, localityId: result.rows[0].locality_id });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    await client.query(
-      `UPDATE kabadiwala_profiles 
-       SET total_pickups = total_pickups + 1 
-       WHERE user_id = $1`,
-      [kabadiwalId]
-    );
+// ─── Analytics dashboard ──────────────────────────────────────────────────────
 
-    await client.query("COMMIT");
+exports.getAnalytics = async (req, res, next) => {
+  try {
+    const [totalPickups, totalWeight, totalEarnings, activeKabadiwalas] = await Promise.all([
+      queryOne("SELECT COUNT(*) AS count FROM pickup_requests WHERE status = 'completed'"),
+      queryOne("SELECT SUM(actual_weight) AS total FROM pickup_assignments WHERE status = 'completed'"),
+      queryOne("SELECT SUM(amount) AS total FROM payment_records WHERE payment_status = 'paid'"),
+      queryOne("SELECT COUNT(*) AS count FROM kabadiwala_profiles WHERE is_available = TRUE"),
+    ]);
 
     res.json({
       success: true,
-      message: "Pickup assigned successfully",
-      assignmentId: result.rows[0].assignment_id,
+      summary: {
+        totalPickups:      parseInt(totalPickups.count),
+        totalWeightKg:     totalWeight.total  || 0,
+        totalEarnings:     totalEarnings.total || 0,
+        activeKabadiwalas: parseInt(activeKabadiwalas.count),
+      },
     });
-
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("Assign pickup error:", error);
-    res.status(500).json({ error: "Failed to assign pickup" });
-  } finally {
-    client.release();
+  } catch (err) {
+    next(err);
   }
 };
 
-// Analytics dashboard
-exports.getAnalytics = async (req, res) => {
+// ─── System configuration ─────────────────────────────────────────────────────
+
+exports.getSystemConfig = async (req, res, next) => {
   try {
+    const result = await query('SELECT key, value, description FROM system_configurations ORDER BY key');
+    res.json({ success: true, configurations: result.rows });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    const totalPickups = await pool.query(
-      "SELECT COUNT(*) as count FROM pickup_requests WHERE status = 'completed'"
+exports.updateSystemConfig = async (req, res, next) => {
+  try {
+    const { key, value } = req.body;
+
+    const existing = await queryOne(
+      'SELECT key FROM system_configurations WHERE key = $1', [key]
+    );
+    if (!existing) {
+      throw new NotFoundError(`Configuration key '${key}' not found`, 'CONFIG_NOT_FOUND');
+    }
+
+    await query(
+      'UPDATE system_configurations SET value = $1 WHERE key = $2',
+      [String(value), key]
     );
 
-    const totalWeight = await pool.query(
-      "SELECT SUM(actual_weight) as total FROM pickup_assignments WHERE status = 'completed'"
-    );
-
-    const totalEarnings = await pool.query(
-      "SELECT SUM(amount) as total FROM payment_records WHERE payment_status = 'paid'"
-    );
-
-    const activeKabadiwalas = await pool.query(
-      "SELECT COUNT(*) as count FROM kabadiwala_profiles WHERE is_available = TRUE"
-    );
-
-    res.json({
-      summary: {
-        totalPickups: parseInt(totalPickups.rows[0].count),
-        totalWeightKg: totalWeight.rows[0].total || 0,
-        totalEarnings: totalEarnings.rows[0].total || 0,
-        activeKabadiwalas: parseInt(activeKabadiwalas.rows[0].count),
-      },
-    });
-
-  } catch (error) {
-    console.error("Analytics error:", error);
-    res.status(500).json({ error: "Failed to fetch analytics" });
+    res.json({ success: true, message: 'Configuration updated' });
+  } catch (err) {
+    next(err);
   }
 };
